@@ -40,10 +40,6 @@
                 <input type="text" id="title" name="title" required>
             </div>
             <div class="form-group">
-                <label for="abstract">Abstract (บทคัดย่อ) :</label>
-                <textarea id="abstract" name="abstract" required></textarea>
-            </div>
-            <div class="form-group">
                 <label for="file">File:</label>
                 <input type="file" id="file" name="file" required>
             </div>
@@ -78,15 +74,6 @@
     }
     input {
         width: 100%;
-        padding: 8px;
-        font-size: 16px;
-        box-sizing: border-box;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-    textarea {
-        width: 100%;
-        height: 100px;
         padding: 8px;
         font-size: 16px;
         box-sizing: border-box;
