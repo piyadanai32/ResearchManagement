@@ -21,7 +21,7 @@
                 alert(`Welcome ${data.user.firstname} ${data.user.lastname}`);
                 
                 // เปลี่ยนเส้นทางไปยังหน้าอื่น 
-                goto('/step/step1'); 
+                goto('/'); 
             } else {
                 const error = await response.json();
                 console.error('Login Failed:', error.message);
