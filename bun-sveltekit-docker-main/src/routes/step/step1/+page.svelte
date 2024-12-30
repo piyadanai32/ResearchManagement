@@ -1,5 +1,63 @@
-<script>
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import { writable } from 'svelte/store';
 
+    // เก็บข้อมูลผู้ใช้ใน store
+    const userData = writable({
+        IDcard: '',
+        firstname: '',
+        lastname: '',
+        email: '',
+        phone: '',
+    });
+
+    // โหลดข้อมูลเมื่อ component mount
+    onMount(async () => {
+        try {
+            const response = await fetch('/api/getUser', { method: 'GET' });
+            if (response.ok) {
+                const data = await response.json();
+                userData.set(data.user); // ตั้งค่าข้อมูลใน store
+            } else {
+                console.error('Failed to fetch user data.');
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        }
+    });
+
+    // ข้อมูลที่ bind กับ input
+    let formData = {
+        IDcard: '',
+        firstname: '',
+        lastname: '',
+        email: '',
+        phone: '',
+    };
+
+    // subscribe ข้อมูลจาก store
+    userData.subscribe((data) => {
+        formData = { ...data };
+    });
+
+    // ฟังก์ชันสำหรับ submit ข้อมูล
+    const submitForm = async () => {
+        try {
+            const response = await fetch('/api/updateUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            if (response.ok) {
+                alert('User information updated successfully.');
+            } else {
+                alert('Failed to update user information.');
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+        }
+    };
 </script>
 
 <svelte:head>
@@ -10,43 +68,31 @@
 <div class="step1-container">
     <div>
         <h1>Researcher Information</h1>
-        <form action="">
+        <form on:submit|preventDefault={submitForm}>
             <div class="form-group">
-                <label for="IDcard">National ID Caed (เลขบัตรประชาชน) :</label>
-                <input type="text" id="IDcard" name="IDcard" required>
+                <label for="IDcard">National ID Card (เลขบัตรประชาชน) :</label>
+                <input type="text" id="IDcard" name="IDcard" bind:value={formData.IDcard} required />
             </div>
             <div class="form-group">
                 <label for="firstname">First name (ชื่อ) :</label>
-                <input type="text" id="firstname" name="firstname" required>
+                <input type="text" id="firstname" name="firstname" bind:value={formData.firstname} required />
             </div>
-            <div class="form-group"><label for="lastname">Last name (นามสกุล) :</label>
-                <input type="text" id="lastname" name="lastname" required>
+            <div class="form-group">
+                <label for="lastname">Last name (นามสกุล) :</label>
+                <input type="text" id="lastname" name="lastname" bind:value={formData.lastname} required />
             </div>
             <div class="form-group">
                 <label for="email">Email (อีเมล) :</label>
-                <input type="email" id="email" name="email" required>
+                <input type="email" id="email" name="email" bind:value={formData.email} required />
             </div>
             <div class="form-group">
                 <label for="phone">Phone (เบอร์โทรศัพท์) :</label>
-                <input type="tel" id="phone" name="phone" required>
+                <input type="tel" id="phone" name="phone" bind:value={formData.phone} required />
+            </div>
+            <div class="formbutton">
+                <button type="submit" class="submit-button">Confirm</button>
             </div>
         </form>
-    </div>
-    <div>
-        <h1>Research Information</h1>
-        <form action="">
-            <div class="form-group">
-                <label for="title">Title (ชื่อวิจัย) :</label>
-                <input type="text" id="title" name="title" required>
-            </div>
-            <div class="form-group">
-                <label for="file">File:</label>
-                <input type="file" id="file" name="file" required>
-            </div>
-        </form>
-    </div>
-    <div class="formbutton">
-        <button type="submit" class="submit-button">Confirm</button>
     </div>
 </div>
 

@@ -20,7 +20,7 @@ export async function POST({ request, cookies }: RequestEvent) {
         }
 
         const [rows] = await db.query<RowDataPacket[]>(
-            'SELECT ID, firstname, lastname, email, role FROM users WHERE IDcard = ? AND phone = ?',
+            'SELECT ID, firstname, lastname, email, role, IDcard, phone FROM users WHERE IDcard = ? AND phone = ?',
             [IDcard, phone]
         );
 
@@ -55,7 +55,10 @@ export async function POST({ request, cookies }: RequestEvent) {
                     lastname: user.lastname,
                     email: user.email,
                     role: user.role
-                }
+                },
+                // เพิ่มข้อมูล IDcard และ phone ในคำตอบ
+                IDcard: user.IDcard,
+                phone: user.phone
             }),
             {
                 status: 200,
