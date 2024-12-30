@@ -1,5 +1,4 @@
 <script>
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { userRole } from '$lib/stores/userRole'; 
 	import { goto } from '$app/navigation';
@@ -43,62 +42,25 @@
 			<path d="M0,0 L1,2 C1.5,3 1.5,3 2,3 L2,0 Z" />
 		</svg>
 		<ul>
-			<!-- เมนูสำหรับ admin -->
 			{#if $userRole === 'admin'}
-				<li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
-					<a href="/">Home</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
-					<a href="/about">About</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/min' ? 'page' : undefined}>
-					<a href="/min">Min</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/login' ? 'page' : undefined}>
-					<a href="/login">Login</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/step/step1' ? 'page' : undefined}>
-					<a href="/step/step1">Form</a>
-				</li>
-
-			<!-- เมนูสำหรับ researcher -->
+				<li><a href="/">Home</a></li>
+				<li><a href="/about">About</a></li>
+				<li><a href="/min">Min</a></li>
+				<li><a href="/login">Login</a></li>
+				<li><a href="/step/step1">Form</a></li>
 			{:else if $userRole === 'researcher'}
-				<li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
-					<a href="/">Home</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/step/step1' ? 'page' : undefined}>
-					<a href="/step/step1">Form</a>
-				</li>
-
-			<!-- เมนูสำหรับ reviewer -->
+				<li><a href="/">Home</a></li>
+				<li><a href="/step/step1">Form</a></li>
 			{:else if $userRole === 'reviewer'}
-				<li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
-					<a href="/">Home</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/min' ? 'page' : undefined}>
-					<a href="/min">Min</a>
-				</li>
-
-			<!-- เมนูสำหรับ judge -->
+				<li><a href="/">Home</a></li>
+				<li><a href="/min">Min</a></li>
 			{:else if $userRole === 'judge'}
-				<li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
-					<a href="/">Home</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/login' ? 'page' : undefined}>
-					<a href="/login">Login</a>
-				</li>
-
-			<!-- เมนูสำหรับ user ที่ยังไม่ session -->
+				<li><a href="/">Home</a></li>
+				<li><a href="/login">Login</a></li>
 			{:else}
-				<li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
-					<a href="/">Home</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/step/step1' ? 'page' : undefined}>
-					<a href="/step/step1">Form</a>
-				</li>
-				<li aria-current={$page.url.pathname === '/login' ? 'page' : undefined}>
-					<a href="/login">Login</a>
-				</li>
+				<li><a href="/">Home</a></li>
+				<li><a href="/step/step1">Form</a></li>
+				<li><a href="/login">Login</a></li>
 			{/if}
 		</ul>
 		<svg viewBox="0 0 2 3" aria-hidden="true">
@@ -170,19 +132,6 @@
 		position: relative;
 		height: 100%;
 	}
-
-	li[aria-current='page']::before {
-		--size: 6px;
-		content: '';
-		width: 0;
-		height: 0;
-		position: absolute;
-		top: 0;
-		left: calc(50% - var(--size));
-		border: var(--size) solid transparent;
-		border-top: var(--size) solid var(--color-theme-1);
-	}
-
 	nav a {
 		display: flex;
 		height: 100%;

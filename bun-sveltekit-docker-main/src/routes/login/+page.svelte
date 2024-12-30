@@ -1,5 +1,4 @@
 <script>
-    //import { onMount } from 'svelte'; // นำเข้า onMount หากต้องการใช้งานเพิ่มเติม
     import { goto } from '$app/navigation'; // นำเข้า goto สำหรับการเปลี่ยนเส้นทาง
 
     let IDcard = '';
@@ -22,6 +21,9 @@
                 
                 // เปลี่ยนเส้นทางไปยังหน้าอื่น 
                 goto('/'); 
+
+                // รีเฟรชหน้า
+                window.location.reload();
             } else {
                 const error = await response.json();
                 console.error('Login Failed:', error.message);
