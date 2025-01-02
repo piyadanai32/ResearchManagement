@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { userRole } from '$lib/stores/userRole'; 
+	import { userRole } from '../stores/userRole';
 	import { goto } from '$app/navigation';
 
 	// โหลด role จาก API

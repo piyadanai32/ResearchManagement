@@ -9,7 +9,7 @@ const config = {
   kit: {
     adapter: adapter(),
     alias: {
-      $lib: resolve('src/lib') // เพิ่ม alias สำหรับ $lib
+      $lib: resolve('src/lib'), // alias สำหรับ $lib
     }
   }
 };

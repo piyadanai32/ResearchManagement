@@ -1,143 +1,91 @@
-import type { RequestEvent } from '@sveltejs/kit';
+import path from 'path';
+import { IncomingForm } from 'formidable';
+import { promises as fs } from 'fs';
 import db from '$lib/db';
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { getSessionData, hasUploadPermission } from '$lib/userUtils';
+import type { RequestHandler } from '@sveltejs/kit';
+import type { OkPacket, FieldPacket } from 'mysql2';
+import { Readable } from 'stream';
 
-export async function POST({ request, cookies }: RequestEvent) {
-    try {
-        // อ่านข้อมูลจาก body ของคำขอ
-        const { title, file_name, file_path, user_id, status } = await request.json();
+const uploadDir = path.join(process.cwd(), 'uploads');
 
-        // ตรวจสอบข้อมูลที่จำเป็น
-        if (!title || !file_name || !file_path || !user_id) {
-            return new Response(
-                JSON.stringify({ message: 'Missing required fields: title, file_name, file_path, user_id' }),
-                {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // อ่านคุกกี้ session
-        const cookiesHeader = cookies.get('session');
-        if (!cookiesHeader) {
-            return new Response(
-                JSON.stringify({ message: 'Unauthorized: Missing session cookie' }),
-                {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // ดึง user_id จาก session คุกกี้
-        const sessionUserId = parseInt(cookiesHeader, 10);
-
-        // ตรวจสอบว่า user_id ใน session กับที่ส่งมาจาก body ตรงกัน
-        if (sessionUserId !== user_id) {
-            return new Response(
-                JSON.stringify({ message: 'Unauthorized: User ID mismatch' }),
-                {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // ตรวจสอบ role ของผู้ใช้จากฐานข้อมูล
-        const [rows] = await db.query<RowDataPacket[]>('SELECT role FROM users WHERE id = ?', [user_id]);
-        if (rows.length === 0) {
-            return new Response(
-                JSON.stringify({ message: 'User not found' }),
-                {
-                    status: 404,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        const userRole = rows[0].role;
-        if (userRole !== 'admin' && userRole !== 'researcher') {
-            return new Response(
-                JSON.stringify({ message: 'Unauthorized: User role must be admin or researcher' }),
-                {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // อ่านประเภทไฟล์จากนามสกุล
-        const fileExtension = file_name.split('.').pop()?.toUpperCase();
-
-        const validFileTypes = ['PDF', 'DOCX', 'PPTX', 'TXT'];
-        if (!fileExtension || !validFileTypes.includes(fileExtension)) {
-            return new Response(
-                JSON.stringify({ message: 'Invalid file type' }),
-                {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // ตรวจสอบค่า status
-        const validStatuses = ['submitted', 'approved', 'rejected', 'in_review'];
-        if (status && !validStatuses.includes(status)) {
-            return new Response(
-                JSON.stringify({ message: 'Invalid status value' }),
-                {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // เพิ่มข้อมูลในฐานข้อมูล
-        const [result] = await db.query<ResultSetHeader>(
-            `INSERT INTO research (title, file_name, file_path, file_type, user_id, status)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [title, file_name, file_path, fileExtension, user_id, status || 'submitted']
-        );
-
-        // ตรวจสอบผลลัพธ์การเพิ่มข้อมูล
-        if (result.affectedRows === 0) {
-            return new Response(
-                JSON.stringify({ message: 'Failed to create research' }),
-                {
-                    status: 500,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
-        // ส่งการตอบกลับสำเร็จ
-        return new Response(
-            JSON.stringify({
-                message: 'Research created successfully',
-                research: {
-                    id: result.insertId,
-                    title,
-                    file_name,
-                    file_path,
-                    file_type: fileExtension,
-                    user_id,
-                    status: status || 'submitted'
-                }
-            }),
-            {
-                status: 201,
-                headers: { 'Content-Type': 'application/json' }
-            }
-        );
-    } catch (error) {
-        console.error('Error in POST handler:', error);
-        return new Response(
-            JSON.stringify({ message: 'Internal Server Error' }),
-            {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            }
-        );
+export const POST: RequestHandler = async ({ request }) => {
+  try {
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+      return new Response(
+        JSON.stringify({ message: 'Content-Type must be multipart/form-data' }),
+        { status: 400 }
+      );
     }
-}
+
+    const sessionData = getSessionData(request);
+    if (!sessionData) {
+      return new Response(JSON.stringify({ message: 'User not logged in' }), { status: 401 });
+    }
+
+    const hasPermission = await hasUploadPermission(sessionData.userID);
+    if (!hasPermission) {
+      return new Response(JSON.stringify({ message: 'You do not have permission to upload files' }), { status: 403 });
+    }
+
+    const arrayBuffer = await request.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const nodeStream = Readable.from(buffer);
+    (nodeStream as any).headers = Object.fromEntries(request.headers);
+
+    const form = new IncomingForm({
+      uploadDir: uploadDir,
+      keepExtensions: true,
+      filename: (name, ext, part) => {
+        return `${Date.now()}-${part.originalFilename}`; // เก็บชื่อไฟล์เดิม
+      }
+    });
+
+    const parseForm = new Promise<{ fields: any; files: any }>((resolve, reject) => {
+      form.parse(nodeStream as any, (err, fields, files) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ fields, files });
+        }
+      });
+    });
+
+    const { fields, files } = await parseForm;
+
+    if (!files.file_data) {
+      return new Response(JSON.stringify({ message: 'No file uploaded' }), { status: 400 });
+    }
+
+    const file = files.file_data[0];
+    const filePath = file.filepath;
+    const originalName = file.originalFilename || 'uploaded_file.pdf';
+
+    const fileData = await fs.readFile(filePath);
+    const title = fields.title?.[0] || originalName;
+    const userId = sessionData.userID;
+
+    // บันทึกชื่อไฟล์ในฐานข้อมูล
+    const [result]: [OkPacket, FieldPacket[]] = await db.query(
+      'INSERT INTO research (title, file_data, user_id, file_name) VALUES (?, ?, ?, ?)',
+      [title, fileData, userId, originalName]  // บันทึกชื่อไฟล์แท้จริง
+    );
+
+    await fs.unlink(filePath);
+
+    return new Response(
+      JSON.stringify({ message: 'File uploaded successfully', researchId: result.insertId }),
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error:', error);
+    if (error instanceof Error) {
+      return new Response(
+        JSON.stringify({ message: 'Internal Server Error', error: error.message }),
+        { status: 500 }
+      );
+    }
+    return new Response(JSON.stringify({ message: 'Internal Server Error' }), { status: 500 });
+  }
+};

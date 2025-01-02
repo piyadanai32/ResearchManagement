@@ -1,5 +1,5 @@
 <script>
-    import Header from '../lib/components/Header.svelte';
+    import Header from '../components/Header.svelte';
     import './styles.css';
     import { onMount } from 'svelte';
     import { writable } from 'svelte/store';
