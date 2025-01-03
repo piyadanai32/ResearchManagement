@@ -11,6 +11,7 @@ const uploadDir = path.join(process.cwd(), 'uploads');
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
+    // ตรวจสอบ Content-Type
     const contentType = request.headers.get('content-type');
     if (!contentType || !contentType.includes('multipart/form-data')) {
       return new Response(
@@ -19,16 +20,19 @@ export const POST: RequestHandler = async ({ request }) => {
       );
     }
 
+    // ตรวจสอบการเข้าสู่ระบบ
     const sessionData = getSessionData(request);
     if (!sessionData) {
       return new Response(JSON.stringify({ message: 'User not logged in' }), { status: 401 });
     }
 
+    // ตรวจสอบสิทธิ์
     const hasPermission = await hasUploadPermission(sessionData.userID);
     if (!hasPermission) {
       return new Response(JSON.stringify({ message: 'You do not have permission to upload files' }), { status: 403 });
     }
 
+    // อ่านข้อมูล multipart/form-data
     const arrayBuffer = await request.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const nodeStream = Readable.from(buffer);
@@ -54,6 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     const { fields, files } = await parseForm;
 
+    // ตรวจสอบว่ามีไฟล์ที่อัปโหลดหรือไม่
     if (!files.file_data) {
       return new Response(JSON.stringify({ message: 'No file uploaded' }), { status: 400 });
     }
@@ -62,16 +67,18 @@ export const POST: RequestHandler = async ({ request }) => {
     const filePath = file.filepath;
     const originalName = file.originalFilename || 'uploaded_file.pdf';
 
+    // อ่านข้อมูลไฟล์
     const fileData = await fs.readFile(filePath);
     const title = fields.title?.[0] || originalName;
     const userId = sessionData.userID;
 
-    // บันทึกชื่อไฟล์ในฐานข้อมูล
+    // บันทึกข้อมูลในฐานข้อมูล
     const [result]: [OkPacket, FieldPacket[]] = await db.query(
       'INSERT INTO research (title, file_data, user_id, file_name) VALUES (?, ?, ?, ?)',
-      [title, fileData, userId, originalName]  // บันทึกชื่อไฟล์แท้จริง
+      [title, fileData, userId, originalName]
     );
 
+    // ลบไฟล์ชั่วคราว
     await fs.unlink(filePath);
 
     return new Response(
@@ -87,5 +94,24 @@ export const POST: RequestHandler = async ({ request }) => {
       );
     }
     return new Response(JSON.stringify({ message: 'Internal Server Error' }), { status: 500 });
+  }
+};
+
+export const GET: RequestHandler = async () => {
+  try {
+    const [rows]: [any[], any] = await db.query(
+      'SELECT id, title, file_name FROM research'
+    );
+
+    return new Response(JSON.stringify(rows), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({ message: 'Internal Server Error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 };

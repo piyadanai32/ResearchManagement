@@ -1,66 +1,56 @@
 <script lang="ts">
-    import { writable } from 'svelte/store';
-  
-    // Store สำหรับแสดงสถานะการดาวน์โหลด
-    let downloadStatus = writable('');
-  
-    // ฟังก์ชันสำหรับดาวน์โหลดไฟล์
-    const downloadFile = async (researchId: string) => {
-      try {
-        // ดึงไฟล์จาก API
-        const response = await fetch(`/api/research/${researchId}`, {
-          method: 'GET',
-        });
-  
-        // ตรวจสอบว่าการตอบสนองสำเร็จหรือไม่
-        if (!response.ok) {
-          throw new Error('ไม่สามารถดาวน์โหลดไฟล์ได้');
-        }
-  
-        // ดึงข้อมูลจาก response
-        const blob = await response.blob();
-  
-        // สร้าง URL สำหรับดาวน์โหลด
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = researchId; // ตั้งชื่อไฟล์ตาม researchId (หรือชื่อที่คุณต้องการ)
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-  
-        // อัปเดตสถานะการดาวน์โหลด
-        downloadStatus.set('ดาวน์โหลดสำเร็จ!');
-      } catch (error: unknown) {
-        // ตรวจสอบว่าถ้า error เป็น instance ของ Error
-        if (error instanceof Error) {
-          downloadStatus.set(`เกิดข้อผิดพลาด: ${error.message}`);
-        } else {
-          // ถ้าไม่สามารถระบุประเภทได้
-          downloadStatus.set('เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
-        }
+  import { onMount } from 'svelte';
+  import { writable } from 'svelte/store';
+
+  interface ResearchFile {
+    id: number;
+    title: string;
+    fileName: string;
+  }
+
+  const files = writable<ResearchFile[]>([]);
+  const fetchStatus = writable('');
+
+  // ดึงข้อมูลไฟล์ทั้งหมดจากฐานข้อมูล
+  const fetchFiles = async () => {
+    fetchStatus.set('กำลังโหลด...');
+    try {
+      const response = await fetch('/api/research');
+      if (response.ok) {
+        const data: ResearchFile[] = await response.json();
+        files.set(data);
+        fetchStatus.set('');
+      } else {
+        const errorData = await response.json();
+        fetchStatus.set(`ข้อผิดพลาด: ${errorData.message}`);
       }
-    };
-  </script>
-  
-  <style>
-    .download-status {
-      margin-top: 10px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    } catch (error) {
+      fetchStatus.set('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     }
-  </style>
+  };
+
+  // เรียกฟังก์ชัน fetchFiles เมื่อคอมโพเนนต์ถูกโหลด
+  onMount(() => {
+    fetchFiles();
+  });
+</script>
+
+<main>
+  <h1>ไฟล์การวิจัยทั้งหมด</h1>
+  <p>{$fetchStatus}</p>
   
-  <main>
-    <h1>ขั้นตอนที่ 3: ดาวน์โหลดไฟล์</h1>
-  
-    <!-- ปุ่มดาวน์โหลดไฟล์ -->
-    <button on:click={() => downloadFile('123')}>ดาวน์โหลดไฟล์</button>
-  
-    <!-- แสดงสถานะการดาวน์โหลด -->
-    <div class="download-status">
-      {$downloadStatus}
-    </div>
-  </main>
-  
+  {#if $files.length > 0}
+    <ul>
+      {#each $files as file}
+        <li>
+          <strong>{file.title}</strong> ({file.fileName})
+          <a href={`/api/research/download/${file.id}`} download={file.fileName}>
+            ดาวน์โหลด
+          </a>
+        </li>
+      {/each}
+    </ul>
+  {:else if $fetchStatus === ''}
+    <p>ไม่มีไฟล์ในฐานข้อมูล</p>
+  {/if}
+</main>

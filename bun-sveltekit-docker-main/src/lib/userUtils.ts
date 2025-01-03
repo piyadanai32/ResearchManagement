@@ -12,7 +12,7 @@ export function getSessionData(request: Request) {
 // ฟังก์ชันในการดึงข้อมูลผู้ใช้จากฐานข้อมูล
 export async function getUserById(userId: number) {
   const [rows] = await db.query<RowDataPacket[]>(
-    'SELECT ID, firstname, lastname, email, phone, role FROM users WHERE ID = ?',
+    'SELECT ID, IDcard,firstname, lastname, email, phone, role FROM users WHERE ID = ?',
     [userId]
   );
   return rows[0];
